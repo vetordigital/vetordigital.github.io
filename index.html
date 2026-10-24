@@ -72,7 +72,7 @@ p{margin:0}
 .burger[aria-expanded="true"] span::before{top:0;transform:rotate(45deg)}
 .burger[aria-expanded="true"] span::after{top:0;transform:rotate(-45deg)}
 .menu{position:absolute;right:max(20px,env(safe-area-inset-right,0px));top:calc(100% + 10px);width:min(300px,calc(100vw - 40px));border-radius:24px;padding:10px;display:flex;flex-direction:column;gap:4px;transform-origin:top right;animation:menuIn .22s ease both}
-.menu[hidden]{display:none}
+.menu[hidden],.form-card[hidden],.done[hidden],[hidden]{display:none!important}
 .menu a{text-decoration:none;padding:14px 16px;border-radius:14px;font-weight:600}
 .menu a:hover{background:rgba(255,255,255,.06)}
 .menu .btn{justify-content:center;margin-top:6px}
