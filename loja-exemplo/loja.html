@@ -1,0 +1,764 @@
+<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta charset="utf-8">
+<title>Provador Vetor</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Conceito: provador azul-noite com neon, arara cromada e as camisetas reais da Vetor penduradas de lado; clique traz a peça e ela gira em 3D. */
+:root{
+  --navy:#0B1220; --navy2:#111B30; --lime:#C8F03C; --ink:#EEF3FA; --mute:#9fb0cc; --line:#25365A;
+  --glass:rgba(14,24,44,.48); --gline:rgba(255,255,255,.14);
+  --f-display:'Anton','Impact','Arial Narrow',sans-serif; --f-body:'Inter',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;overflow:hidden}
+body{background:var(--navy);color:var(--ink);font-family:var(--f-body)}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+#app{position:fixed;inset:0;z-index:100;display:none;overflow:hidden;background:radial-gradient(120% 80% at 50% 0%,#14223c 0%,var(--navy) 60%)}
+#app>header{position:absolute;z-index:30;inset:0 0 auto 0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px max(16px,env(safe-area-inset-right,0px)) 14px max(16px,env(safe-area-inset-left,0px));background:linear-gradient(var(--navy) 30%,transparent)}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-size:22px;letter-spacing:.04em;white-space:nowrap}
+.brand small{font-family:var(--f-body);font-size:11px;letter-spacing:.14em;color:var(--mute);text-transform:uppercase;font-weight:600;display:block;margin-top:2px}
+.demo{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--navy);background:var(--lime);padding:5px 9px;border-radius:4px;white-space:nowrap}
+.bagbtn{display:flex;align-items:center;gap:8px;background:var(--navy2);border:1px solid var(--line);padding:9px 14px;border-radius:999px;font-weight:600;font-size:14px}
+.bagbtn b{background:var(--lime);color:var(--navy);min-width:20px;height:20px;border-radius:10px;display:grid;place-items:center;font-size:12px;padding:0 5px}
+
+/* cena 3D */
+#stage{position:absolute;inset:0;perspective:1250px;perspective-origin:50% 42%;overflow:hidden;cursor:grab;touch-action:none}
+#stage.drag{cursor:grabbing}
+#room{pointer-events:none;position:absolute;inset:0;transform-style:preserve-3d;transition:transform .25s ease-out}
+#world{position:absolute;left:0;top:50%;width:0;height:0;transform-style:preserve-3d;will-change:transform}
+.wall{position:absolute;top:-520px;height:1100px;transform:translateZ(-420px);background:linear-gradient(90deg,rgba(255,255,255,.035) 0 2px,transparent 2px 100%) 0 0/160px 100%,linear-gradient(180deg,#16233e 0%,#0f1a30 55%,#0c1526 100%);box-shadow:inset 0 -120px 160px rgba(0,0,0,.45)}
+.wainscot{position:absolute;left:0;right:0;bottom:0;height:300px;background:linear-gradient(90deg,rgba(255,255,255,.04) 0 3px,transparent 3px 100%) 0 0/120px 100%,#101b33;border-top:6px solid #2c4170}
+.rail{position:absolute;top:-330px;height:9px;transform:translateZ(-230px);border-radius:5px;background:linear-gradient(#f2f6fc,#8d9bb4 50%,#4a5a78);box-shadow:0 10px 18px rgba(0,0,0,.5)}
+.bracket{position:absolute;top:-520px;width:8px;height:196px;transform:translateZ(-232px);background:linear-gradient(90deg,#55657f,#c9d3e3,#55657f);border-radius:3px}
+.neon{position:absolute;top:-250px;font-family:var(--f-display);font-size:92px;letter-spacing:.08em;color:var(--lime);text-shadow:0 0 6px var(--lime),0 0 26px rgba(200,240,60,.7),0 0 70px rgba(200,240,60,.35);transform:translateZ(-410px);white-space:nowrap}
+.neon small{display:block;font-family:var(--f-body);font-size:20px;letter-spacing:.5em;color:#e9f9b0;text-shadow:0 0 12px rgba(200,240,60,.8);margin-top:4px}
+.lamp{position:absolute;top:-520px;width:3px;height:120px;background:#33466c;transform:translateZ(-300px)}
+.lamp i{position:absolute;left:-26px;top:118px;width:55px;height:26px;border-radius:30px 30px 4px 4px;background:#e9f9b0;box-shadow:0 0 40px 14px rgba(200,240,60,.45)}
+.light{position:absolute;top:-400px;width:520px;height:900px;transform:translateZ(-380px);background:radial-gradient(50% 50% at 50% 12%,rgba(200,240,60,.10),transparent 70%)}
+.mirror{position:absolute;top:-250px;width:240px;height:560px;transform:translateZ(-400px);border:10px solid #b9c6dd;border-radius:120px 120px 8px 8px;background:linear-gradient(115deg,#223455 0%,#445a85 30%,#1b2a49 55%,#4a628f 80%,#1d2d4e);box-shadow:0 30px 60px rgba(0,0,0,.6),inset 0 0 40px rgba(0,0,0,.5);overflow:hidden}
+.mirror::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.22) 45%,transparent 55%)}
+.bench{position:absolute;top:372px;width:300px;height:96px;transform:translateZ(-300px)}
+.bench::before{content:"";position:absolute;left:0;right:0;top:0;height:40px;border-radius:10px;background:linear-gradient(#2c4170,#1d2d4d);box-shadow:0 8px 0 #0f1a30}
+.bench::after{content:"";position:absolute;left:26px;right:26px;top:48px;height:48px;background:linear-gradient(90deg,#c8f03c 0 8px,transparent 8px calc(100% - 8px),#c8f03c calc(100% - 8px))}
+.curtain{position:absolute;top:-520px;width:220px;height:1040px;transform:translateZ(-240px);background:repeating-linear-gradient(90deg,#10294f 0 22px,#0a1b38 22px 44px);box-shadow:0 0 60px rgba(0,0,0,.6),inset -30px 0 60px rgba(0,0,0,.5)}
+.plant{position:absolute;top:210px;width:120px;height:260px;transform:translateZ(-290px)}
+.plant .pot{position:absolute;bottom:0;left:30px;width:60px;height:70px;background:linear-gradient(90deg,#2a3c60,#18253f);border-radius:6px 6px 12px 12px}
+.plant .leaf{position:absolute;bottom:60px;left:56px;width:14px;height:170px;border-radius:50% 50% 0 0;background:linear-gradient(#7fb02a,#2e5d1a);transform-origin:bottom}
+#ff{position:absolute;left:0;right:0;bottom:0;height:27%;pointer-events:none;z-index:2;background:repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 2px,transparent 2px 160px),linear-gradient(180deg,rgba(200,240,60,.14),#223155 18%,#17233f 100%);border-top:4px solid #3a528a;box-shadow:0 -20px 40px rgba(0,0,0,.35)}
+
+/* camisetas */
+.sh{position:absolute;top:-337px;width:240px;height:300px;margin-left:-120px;transform-style:preserve-3d;transform-origin:120px 12px;pointer-events:none}
+.sh.anim{transition:transform .85s cubic-bezier(.2,.8,.2,1)}
+.sh .hit{position:absolute;left:0;top:30px;width:240px;height:240px;pointer-events:auto;cursor:pointer;background:transparent;border:0;padding:0;transform:translateZ(1px)}
+.sh .hg{position:absolute;left:0;top:0;width:240px;height:80px;overflow:visible}
+.sh .face{position:absolute;left:-12px;top:34px;width:264px;height:242px;backface-visibility:hidden;-webkit-backface-visibility:hidden;filter:drop-shadow(0 14px 12px rgba(0,0,0,.45))}
+.sh .f{transform:translateZ(4px)}
+.sh .b{transform:rotateY(180deg) translateZ(4px)}
+.sh .edge{position:absolute;left:116px;top:50px;width:8px;height:212px;border-radius:4px;transform:rotateY(90deg);background:linear-gradient(#3a3d45,#24262c)}
+.sh.navy .edge{background:linear-gradient(#22345a,#152340)}
+.sh.hov .face{filter:drop-shadow(0 14px 12px rgba(0,0,0,.45)) brightness(1.12)}
+.sh.sel .hit{cursor:grab}
+
+.controls{position:absolute;z-index:25;left:0;right:0;bottom:0;padding:12px max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;align-items:center;justify-content:space-between;gap:12px;pointer-events:none}
+.controls>*{pointer-events:auto}
+.hint{background:var(--glass);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:1px solid var(--gline);padding:10px 16px;border-radius:999px;font-size:13px;color:#dbe4f2}
+.hint b{color:var(--lime)}
+.nav{display:flex;gap:10px}
+.nav button{width:46px;height:46px;border-radius:50%;background:var(--navy2);border:1px solid var(--line);font-size:20px}
+.nav button:hover{border-color:var(--lime);color:var(--lime)}
+
+#intro{position:absolute;z-index:40;inset:0;display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-left,0px));background:radial-gradient(90% 70% at 50% 40%,rgba(11,18,32,.55),rgba(11,18,32,.93));transition:opacity .6s,visibility .6s;text-align:center}
+#intro.off{opacity:0;visibility:hidden}
+#intro h1{font-family:var(--f-display);font-weight:400;font-size:clamp(54px,12vw,128px);line-height:.95;margin:0;letter-spacing:.02em}
+#intro h1 em{font-style:normal;color:var(--lime)}
+#intro p{max-width:46ch;margin:18px auto 28px;color:#c3cfe3;font-size:17px;line-height:1.5}
+.cta:disabled{opacity:.6;cursor:wait}
+.cta{background:var(--lime);color:var(--navy);border:0;padding:16px 30px;border-radius:6px;font-weight:700;font-size:16px;letter-spacing:.04em;box-shadow:6px 6px 0 #fff}
+.cta:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 #fff}
+#intro small{display:block;margin-top:26px;color:var(--mute);font-size:12px;letter-spacing:.06em}
+
+.sheet{position:fixed;z-index:150;top:50%;right:max(28px,env(safe-area-inset-right,0px));width:min(350px,calc(100% - 32px));max-height:min(600px,calc(100% - 150px));border-radius:22px;background:var(--glass);-webkit-backdrop-filter:blur(26px) saturate(150%);backdrop-filter:blur(26px) saturate(150%);border:1px solid var(--gline);box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.12);display:flex;flex-direction:column;overflow:hidden;opacity:0;visibility:hidden;transform:translateY(-50%) translateX(24px) scale(.97);transition:opacity .3s,transform .35s cubic-bezier(.2,.8,.2,1),visibility .3s}
+.sheet.open{opacity:1;visibility:visible;transform:translateY(-50%)}
+.top{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 6px}
+.top h2{margin:0;font-family:var(--f-display);font-weight:400;letter-spacing:.04em;font-size:22px}
+.x{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);width:38px;height:38px;border-radius:50%}
+.body{overflow:auto;padding:0 16px 12px;flex:1;min-height:0}
+.name{font-size:19px;font-weight:700;margin:4px 0 2px}
+.price{font-size:20px;color:var(--lime);font-weight:700;font-variant-numeric:tabular-nums}
+.desc{color:#c4d0e4;line-height:1.5;font-size:13px;margin:8px 0 4px}
+.lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);font-weight:700;margin:12px 0 7px}
+.cor{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600}
+.cor i{width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,255,255,.3)}
+.sz{display:flex;gap:8px;flex-wrap:wrap}
+.sz button{min-width:46px;height:38px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);font-weight:600}
+.sz button[aria-pressed="true"]{background:var(--lime);color:var(--navy);border-color:var(--lime)}
+.tip{font-size:12px;color:var(--mute);margin-top:12px;line-height:1.5}
+.foot{padding:12px 16px 16px;border-top:1px solid rgba(255,255,255,.1);display:grid;gap:8px}
+.add{width:100%;background:var(--lime);color:var(--navy);border:0;border-radius:8px;padding:14px;font-weight:700;font-size:15px;box-shadow:0 10px 26px rgba(200,240,60,.22)}
+.add:disabled{opacity:.4;box-shadow:none;cursor:not-allowed}
+.back{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);border-radius:8px;padding:11px;font-weight:600;font-size:14px}
+.lines{padding:0 16px;overflow:auto;flex:1;min-height:0}
+.line{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.1)}
+.line img{width:46px;height:42px;object-fit:contain;flex:none}
+.line .t{flex:1;min-width:0;font-size:14px}.line .t b{display:block}.line .t span{color:var(--mute);font-size:12px}
+.line .p{font-weight:700;font-variant-numeric:tabular-nums;font-size:14px}
+.empty{color:var(--mute);text-align:center;padding:36px 10px;line-height:1.6}
+.total{display:flex;justify-content:space-between;font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
+.zap{display:block;text-align:center;text-decoration:none;background:#25D366;color:#06210f;border-radius:8px;padding:14px;font-weight:700;font-size:15px}
+.note{font-size:11px;color:var(--mute);margin:0;line-height:1.5;text-align:center}
+.pitch{padding:12px;border:1px dashed var(--lime);border-radius:10px;font-size:12px;color:#d8e6a6;line-height:1.5}
+.toast{position:fixed;z-index:200;left:50%;top:72px;transform:translate(-50%,-20px);background:var(--lime);color:var(--navy);padding:10px 16px;border-radius:6px;font-weight:700;font-size:14px;opacity:0;transition:.3s;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+@media (max-width:700px){
+  .brand small,.demo{display:none}.brand{font-size:18px}
+  .sheet{top:auto;bottom:calc(14px + env(safe-area-inset-bottom,0px));right:16px;max-height:46%;transform:translateY(24px) scale(.97)}
+  .sheet.open{transform:none}
+  .hint{font-size:12px;padding:9px 12px}.nav button{width:42px;height:42px}
+}
+@media (prefers-reduced-motion:reduce){.sh.anim,#room,.sheet,#intro{transition:none}}
+/* ---------- loja (página inicial) ---------- */
+body.v3d #app{display:block}
+body.v3d #store{visibility:hidden}
+#store{position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;background:var(--navy);-webkit-overflow-scrolling:touch}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.topbar{background:var(--lime);color:var(--navy);font-size:12px;font-weight:700;letter-spacing:.06em;text-align:center;padding-block:7px}
+.sthead{position:sticky;top:0;z-index:20;background:rgba(11,18,32,.82);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.sthead .wrap{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-block:12px}
+.snav{display:flex;align-items:center;gap:22px;font-size:14px;font-weight:600}
+.snav a{color:#c9d4e6;text-decoration:none}.snav a:hover{color:var(--lime)}
+.btn3d{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;background:var(--lime);color:var(--navy);border:0;border-radius:999px;padding:10px 16px;font-weight:700;font-size:14px;box-shadow:0 0 0 0 rgba(200,240,60,.5);animation:pulse 2.4s infinite}
+.btn3d svg{flex:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(200,240,60,.45)}70%{box-shadow:0 0 0 12px rgba(200,240,60,0)}100%{box-shadow:0 0 0 0 rgba(200,240,60,0)}}
+.hero{position:relative;overflow:hidden;background:radial-gradient(80% 90% at 75% 40%,#1c2d52 0%,var(--navy) 65%)}
+.hero .wrap{display:grid;grid-template-columns:1.05fr 1fr;gap:24px;align-items:center;padding-block:56px 40px}
+.eyebrow{display:inline-flex;gap:8px;align-items:center;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--lime)}
+.eyebrow::before{content:"";width:22px;height:2px;background:var(--lime)}
+.hero h1{font-family:var(--f-display);font-weight:400;font-size:clamp(52px,8vw,104px);line-height:.92;margin:14px 0 0;letter-spacing:.01em}
+.hero h1 em{font-style:normal;color:var(--lime)}
+.hero p{color:#c3cfe3;font-size:17px;line-height:1.55;max-width:44ch;margin:18px 0 26px}
+.heroctas{display:flex;gap:12px;flex-wrap:wrap}
+.ghost{background:transparent;border:1px solid rgba(255,255,255,.28);color:var(--ink);border-radius:6px;padding:15px 22px;font-weight:700;font-size:15px}
+.ghost:hover{border-color:var(--lime);color:var(--lime)}
+.heroart{position:relative;height:440px;min-width:0}
+.heroart::before{content:"";position:absolute;left:50%;top:50%;width:360px;height:360px;max-width:90%;transform:translate(-50%,-50%);border-radius:50%;border:2px solid rgba(200,240,60,.35);box-shadow:0 0 80px rgba(200,240,60,.12) inset}
+.heroart img{position:absolute;max-width:none;filter:drop-shadow(0 30px 30px rgba(0,0,0,.5))}
+.heroart .h1i{width:62%;left:4%;top:12%;transform:rotate(-6deg)}
+.heroart .h2i{width:62%;right:2%;top:20%;transform:rotate(7deg)}
+.perks{border-block:1px solid var(--line);background:var(--navy2)}
+.perks .wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding-block:18px}
+.perk{display:flex;gap:12px;align-items:center;font-size:14px;color:#c9d4e6;min-width:0}
+.perk b{display:block;color:var(--ink);font-size:14px}
+.perk i{width:38px;height:38px;flex:none;border-radius:10px;background:rgba(200,240,60,.12);display:grid;place-items:center;color:var(--lime);font-style:normal;font-weight:800}
+.sec{padding-block:48px;scroll-margin-top:70px}
+.sechead{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+.sechead h2{font-family:var(--f-display);font-weight:400;font-size:clamp(34px,5vw,52px);margin:0;letter-spacing:.02em;line-height:1}
+.sechead p{margin:6px 0 0;color:var(--mute);font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.card{background:var(--navy2);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;min-width:0;transition:transform .25s,border-color .25s}
+.card:hover{transform:translateY(-4px);border-color:#3a5288}
+.ph{position:relative;aspect-ratio:1/1.05;background:radial-gradient(70% 60% at 50% 45%,#22345c,#121c33);display:grid;place-items:center;overflow:hidden;cursor:pointer;border:0;padding:0;width:100%}
+.ph img{position:absolute;width:88%;max-width:none;transition:opacity .35s,transform .35s}
+.ph img.bk{opacity:0}
+.card:hover .ph img.fr{opacity:0;transform:scale(1.04)}
+.card:hover .ph img.bk{opacity:1;transform:scale(1.04)}
+.ph .tag3d{position:absolute;left:10px;top:10px;background:rgba(11,18,32,.75);border:1px solid rgba(200,240,60,.5);color:var(--lime);font-size:11px;font-weight:700;letter-spacing:.08em;padding:4px 8px;border-radius:999px}
+.ph .sk{position:absolute;inset:18%;border-radius:20px;background:linear-gradient(90deg,#1b2846,#24365d,#1b2846);background-size:200% 100%;animation:sk 1.2s infinite}
+@keyframes sk{to{background-position:-200% 0}}
+.cinfo{padding:14px 14px 16px;display:grid;gap:4px}
+.cinfo b{font-size:15px}
+.cinfo .cc{font-size:13px;color:var(--mute);display:flex;align-items:center;gap:7px}
+.cinfo .cc i{width:12px;height:12px;border-radius:50%;border:1px solid rgba(255,255,255,.35)}
+.cinfo .pr{font-size:18px;font-weight:700;color:var(--lime);font-variant-numeric:tabular-nums;margin-top:4px}
+.cinfo .inst{font-size:12px;color:var(--mute)}
+.cact{display:flex;gap:8px;padding:0 14px 14px}
+.cact .buy{flex:1;background:var(--lime);color:var(--navy);border:0;border-radius:8px;padding:11px;font-weight:700;font-size:14px}
+.cact .v3{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:0 12px;font-weight:700;font-size:13px}
+.cact .v3:hover{border-color:var(--lime);color:var(--lime)}
+.band{margin-block:8px 0;background:linear-gradient(100deg,#15244a,#0f1a33);border:1px solid var(--line);border-radius:20px;padding:34px;display:grid;grid-template-columns:1.3fr 1fr;gap:24px;align-items:center}
+.band h3{font-family:var(--f-display);font-weight:400;font-size:clamp(30px,4.4vw,46px);margin:0;line-height:1}
+.band h3 em{color:var(--lime);font-style:normal}
+.band p{color:#c3cfe3;line-height:1.55;margin:12px 0 0}
+.band .bx{display:flex;justify-content:flex-end}
+.sfoot{border-top:1px solid var(--line);padding-block:26px 40px;color:var(--mute);font-size:13px}
+.sfoot .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center}
+.sfoot b{color:var(--ink)}
+/* vídeo explicativo */
+#vx{position:fixed;z-index:170;inset:0;display:grid;place-items:center;padding:16px;background:rgba(5,9,18,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s}
+#vx.open{opacity:1;visibility:visible}
+.vxbox{position:relative;width:min(380px,100%);max-height:calc(100% - 32px);aspect-ratio:9/16;border-radius:22px;overflow:hidden;border:1px solid var(--gline);box-shadow:0 30px 80px rgba(0,0,0,.6);background:#000}
+.vxbox video{width:100%;height:100%;object-fit:cover;display:block}
+.vxbox .x{position:absolute;top:10px;right:10px;z-index:2;background:rgba(11,18,32,.7)}
+.vxskip{position:absolute;left:12px;top:12px;z-index:2;background:rgba(11,18,32,.75);border:1px solid var(--gline);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600}
+.btnvx{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:9px 14px;font-weight:600;font-size:14px;white-space:nowrap}
+.btnvx:hover{border-color:var(--lime);color:var(--lime)}
+@media (max-width:640px){.btnvx span{display:none}.btnvx{padding:9px 11px}}
+/* visualização rápida */
+#qv{position:fixed;z-index:160;inset:0;display:grid;place-items:center;padding:16px;background:rgba(5,9,18,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s}
+#qv.open{opacity:1;visibility:visible}
+.qvbox{width:min(860px,100%);max-height:calc(100% - 32px);overflow:auto;border-radius:22px;background:rgba(17,27,48,.72);-webkit-backdrop-filter:blur(26px) saturate(150%);backdrop-filter:blur(26px) saturate(150%);border:1px solid var(--gline);box-shadow:0 30px 80px rgba(0,0,0,.55);display:grid;grid-template-columns:1.1fr 1fr}
+.qvimg{position:relative;background:radial-gradient(70% 60% at 50% 45%,#22345c,#121c33);display:grid;place-items:center;min-height:380px}
+.qvimg img{width:86%;max-width:none}
+.qvtabs{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:6px;background:rgba(11,18,32,.7);padding:4px;border-radius:999px;border:1px solid var(--line)}
+.qvtabs button{background:none;border:0;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;color:#c9d4e6}
+.qvtabs button[aria-pressed="true"]{background:var(--lime);color:var(--navy)}
+.qvinfo{padding:22px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.qvinfo .x{align-self:flex-end}
+.sw{display:flex;gap:10px;flex-wrap:wrap}
+.sw button{width:32px;height:32px;border-radius:50%;border:2px solid transparent;box-shadow:0 0 0 1px rgba(255,255,255,.3)}
+.sw button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--navy),0 0 0 4px var(--lime)}
+.qvinfo .add{margin-top:14px}
+@media (max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}.hero .wrap{grid-template-columns:1fr}.heroart{height:340px}.band{grid-template-columns:1fr}.band .bx{justify-content:flex-start}.snav a{display:none}}
+@media (max-width:640px){
+  .perks .wrap{grid-template-columns:1fr}.grid{gap:12px}.cinfo{padding:12px}.cact{padding:0 12px 12px;flex-direction:column}.cact .v3{padding:9px}
+  .qvbox{grid-template-columns:1fr}.qvimg{min-height:280px}.hero .wrap{padding-block:34px 20px}.heroart{height:280px}
+  .btn3d{padding:9px 12px;font-size:13px}.sthead .brand small{display:none}.sthead .brand{font-size:18px}.snav{gap:6px}.sthead .wrap{gap:8px}.sthead .brand svg{width:28px;height:28px}.sthead .bagbtn{padding:8px 11px}
+}
+</style>
+
+<div id="store">
+  <div class="topbar">LOJA DE DEMONSTRAÇÃO CRIADA PELA VETOR DIGITAL · PREÇOS FICTÍCIOS</div>
+  <header class="sthead"><div class="wrap">
+    <div class="brand">
+      <svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true"><path d="M4 6h8l8 18 8-18h8L24 36h-8z" fill="#C8F03C"/></svg>
+      <div>LOJA VETOR<small>Coleção V</small></div>
+    </div>
+    <nav class="snav" aria-label="Menu">
+      <a href="#produtos" data-scroll="produtos">Camisetas</a>
+      <a href="#sobre" data-scroll="sobre">Sobre</a>
+      <button class="btnvx" data-video aria-label="Como funciona"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><span>Como funciona</span></button>
+      <button class="btn3d" data-open3d><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg><span>Ver em 3D</span></button>
+      <button class="bagbtn" data-bag aria-label="Abrir sacola">Sacola <b class="bagn">0</b></button>
+    </nav>
+  </div></header>
+
+  <section class="hero"><div class="wrap">
+    <div>
+      <span class="eyebrow">Nova coleção</span>
+      <h1>COLEÇÃO <em>V</em><br>VETOR</h1>
+      <p>Camisetas básicas com o V da Vetor no peito e nas costas. Escolha a cor, o tamanho e veja cada peça girando no provador 3D antes de comprar.</p>
+      <div class="heroctas">
+        <button class="cta" data-scroll="produtos">VER CAMISETAS</button>
+        <button class="ghost" data-open3d>Ver em 3D no provador</button>
+        <button class="ghost" data-video>&#9654; Como funciona</button>
+      </div>
+    </div>
+    <div class="heroart" aria-hidden="true"><img class="h2i" id="heroB" alt=""><img class="h1i" id="heroF" alt=""></div>
+  </div></section>
+
+  <section class="perks"><div class="wrap">
+    <div class="perk"><i>3D</i><div><b>Provador 3D</b>Gire a peça e veja frente e costas</div></div>
+    <div class="perk"><i>PP</i><div><b>Do PP ao GG</b>Escolha o tamanho na hora</div></div>
+    <div class="perk"><i>✓</i><div><b>Pedido pelo WhatsApp</b>Monte a sacola e finalize na conversa</div></div>
+  </div></section>
+
+  <section class="sec" id="produtos"><div class="wrap">
+    <div class="sechead"><div><h2>CAMISETAS</h2><p>Passe o mouse para ver as costas.</p></div>
+      <button class="btn3d" data-open3d><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg><span>Abrir o provador 3D</span></button></div>
+    <div class="grid" id="grid"></div>
+  </div></section>
+
+  <section class="sec" id="sobre" style="padding-top:0"><div class="wrap">
+    <div class="band">
+      <div><h3>QUER UMA LOJA ASSIM PARA A <em>SUA MARCA</em>?</h3>
+      <p>Esta loja é um exemplo criado pela Vetor Digital: vitrine, sacola, pedido pelo WhatsApp e provador 3D. Chame a gente: (38) 99725-1419 · @vetordigital.lp</p></div>
+      <div class="bx"><a class="zap" style="padding:14px 22px" href="https://wa.me/5538997251419?text=Ol%C3%A1!%20Vi%20a%20loja%20exemplo%20e%20quero%20uma%20para%20a%20minha%20marca." target="_blank" rel="noopener">Falar com a Vetor Digital</a></div>
+    </div>
+  </div></section>
+
+  <footer class="sfoot"><div class="wrap"><span><b>Loja Vetor</b> · loja de exemplo da Vetor Digital · <a href="https://vetordigital.github.io" target="_blank" rel="noopener" style="color:var(--lime)">site oficial da Vetor Digital</a> · <a href="index.html" style="color:var(--mute)">ver o vídeo</a></span><span>Produtos e preços fictícios, apenas para demonstração.</span></div></footer>
+</div>
+
+<div id="vx" aria-hidden="true">
+  <div class="vxbox" role="dialog" aria-modal="true" aria-label="Vídeo: como funciona a loja">
+    <button class="x" id="vxclose" aria-label="Fechar vídeo">&#10005;</button>
+    <video id="vxv" src="explicativo.mp4" poster="explicativo-capa.jpg" playsinline controls preload="metadata"></video>
+    <button class="vxskip" id="vxskip">Pular e ver a loja</button>
+  </div>
+</div>
+<div id="qv" aria-hidden="true">
+  <div class="qvbox" role="dialog" aria-modal="true" aria-label="Camiseta">
+    <div class="qvimg"><img id="qvimg" alt=""><div class="qvtabs"><button id="qvf" aria-pressed="true">Frente</button><button id="qvb" aria-pressed="false">Costas</button></div></div>
+    <div class="qvinfo">
+      <button class="x" id="qvclose" aria-label="Fechar">&#10005;</button>
+      <div class="name" id="qvname">Camiseta Vetor</div>
+      <div class="price">R$ 89,90</div>
+      <div class="cinfo" style="padding:0"><span class="inst">ou 3x de R$ 29,97</span></div>
+      <p class="desc">Camiseta básica com o V da Vetor no peito e o V grande com @vetordigital.lp nas costas.</p>
+      <div class="lbl" id="qvcor">Cor</div><div class="sw" id="qvsw"></div>
+      <div class="lbl">Tamanho</div><div class="sz" id="qvsz"></div>
+      <button class="add" id="qvadd" disabled>Escolha o tamanho</button>
+      <button class="back" id="qv3d">Ver esta camiseta em 3D</button>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+<header>
+  <div class="brand">
+    <svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true"><path d="M4 6h8l8 18 8-18h8L24 36h-8z" fill="#C8F03C"/></svg>
+    <div>PROVADOR 3D<small>Loja Vetor · exemplo</small></div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <button class="bagbtn" id="tostore" aria-label="Voltar para a loja">&#8592; Loja</button>
+    <button class="bagbtn" id="bagbtn" aria-label="Abrir sacola">Sacola <b class="bagn">0</b></button>
+  </div>
+</header>
+
+<div id="stage" aria-label="Arara com camisetas da Vetor. Arraste para os lados, clique numa camiseta para trazer para frente e arraste para girar.">
+  <div id="room"><div id="world"></div></div><div id="ff"></div>
+</div>
+
+<div class="controls">
+  <div class="hint" id="hint"><b>Clique</b> numa camiseta para ver em 3D</div>
+  <div class="nav"><button id="prev" aria-label="Ver camisetas à esquerda">&#8592;</button><button id="next" aria-label="Ver camisetas à direita">&#8594;</button></div>
+</div>
+
+
+
+<aside class="sheet" id="psheet" aria-label="Detalhes da camiseta">
+  <div class="top"><h2>CAMISETA</h2><button class="x" id="pclose" aria-label="Devolver para a arara">&#10005;</button></div>
+  <div class="body" id="pbody"></div>
+  <div class="foot"><button class="add" id="addbtn" disabled>Escolha o tamanho</button><button class="back" id="backbtn">Devolver para a arara</button></div>
+</aside>
+
+</div>
+<aside class="sheet" id="bsheet" aria-label="Sacola">
+  <div class="top"><h2>SUA SACOLA</h2><button class="x" id="bclose" aria-label="Fechar">&#10005;</button></div>
+  <div class="lines" id="blines"></div>
+  <div class="foot">
+    <div class="total"><span>Total</span><span id="btotal">R$ 0,00</span></div>
+    <a class="zap" id="zap" href="#" target="_blank" rel="noopener">Finalizar pelo WhatsApp</a>
+    <p class="note">Loja de demonstração. O botão abre uma conversa com a Vetor Digital.</p>
+    <div class="pitch">Quer uma loja assim para a sua marca? Chame a Vetor Digital: (38) 99725-1419 · @vetordigital.lp</div>
+  </div>
+</aside>
+<div class="toast" id="toast"></div>
+
+<script>
+/* Camiseta Vetor renderizada do zero: mapa de altura do tecido (volume, dobras, rugas, gola canelada, costuras)
+   + iluminação por pixel (difusa, oclusão nas dobras, brilho de malha, verniz da estampa). Nenhuma foto. */
+function makeShirt(side,hex,seed,ink){
+  ink=ink||'#F2F3F1';
+  const W=700,H=640,N=W*H,front=side==='front';
+  seed=seed||(front?11:23);
+  const cv=(w=W,h=H)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c};
+  const rgb=[1,3,5].map(i=>parseInt(hex.substr(i,2),16)/255);
+  /* ---------- silhueta ---------- */
+  function body(){
+    const p=new Path2D();
+    p.moveTo(268,34);
+    p.bezierCurveTo(230,40,200,48,186,58);
+    p.bezierCurveTo(150,80,92,120,44,170);
+    p.bezierCurveTo(64,202,92,234,120,260);
+    p.bezierCurveTo(142,242,160,230,176,224);
+    p.bezierCurveTo(173,330,169,470,162,612);
+    p.bezierCurveTo(250,627,450,627,538,612);
+    p.bezierCurveTo(531,470,527,330,524,224);
+    p.bezierCurveTo(540,230,558,242,580,260);
+    p.bezierCurveTo(608,234,636,202,656,170);
+    p.bezierCurveTo(608,120,550,80,514,58);
+    p.bezierCurveTo(500,48,470,40,432,34);
+    if(front)p.bezierCurveTo(420,92,280,92,268,34);else p.bezierCurveTo(415,58,285,58,268,34);
+    p.closePath();return p;
+  }
+  const P=body();
+  const neck=new Path2D();
+  if(front){neck.moveTo(268,34);neck.bezierCurveTo(280,92,420,92,432,34);}else{neck.moveTo(268,34);neck.bezierCurveTo(285,58,415,58,432,34);}
+  const alphaOf=(draw)=>{const c=cv(),x=c.getContext('2d');draw(x);const d=x.getImageData(0,0,W,H).data,o=new Float32Array(N);for(let i=0;i<N;i++)o[i]=d[i*4+3]/255;return o};
+  const mask=alphaOf(x=>{x.fill(P)});
+  /* estampa */
+  function drawV(x,cx,top,sz){
+    const w=sz*0.40,by=top+sz;
+    x.fillStyle=ink;x.beginPath();x.moveTo(cx-sz*0.70,top+sz*0.22);x.lineTo(cx-sz*0.70+w,top+sz*0.22);x.lineTo(cx+w*0.10,by-w*0.55);x.lineTo(cx,by);x.closePath();x.fill();
+    x.fillStyle='#CBE63A';x.beginPath();x.moveTo(cx+sz*0.62-w*0.15,top);x.lineTo(cx+sz*0.62+w*0.72,top);x.lineTo(cx,by);x.lineTo(cx-w*0.02,by-w*0.62);x.closePath();x.fill();
+  }
+  function drawPrint(x){
+    if(front){drawV(x,420,148,62);return}
+    drawV(x,342,96,172);
+    x.fillStyle=ink;x.strokeStyle=ink;x.font='600 33px Inter, "Segoe UI", Arial, sans-serif';x.textBaseline='middle';
+    const t='@vetordigital.lp',tw=x.measureText(t).width,ix=350-(tw+44)/2,iy=352;
+    x.lineWidth=3.2;x.beginPath();x.roundRect?x.roundRect(ix,iy-15,30,30,9):x.rect(ix,iy-15,30,30);x.stroke();
+    x.beginPath();x.arc(ix+15,iy,7,0,Math.PI*2);x.stroke();x.beginPath();x.arc(ix+23.5,iy-7.5,2.2,0,Math.PI*2);x.fill();
+    x.fillText(t,ix+44,iy+1);
+  }
+  const pc=cv(),px=pc.getContext('2d');px.save();px.clip(P);drawPrint(px);px.restore();
+  const pd=px.getImageData(0,0,W,H).data;
+  const pm=new Float32Array(N);for(let i=0;i<N;i++)pm[i]=pd[i*4+3]/255;
+  const collar=alphaOf(x=>{x.save();x.clip(P);x.lineWidth=22;x.stroke(neck);x.restore()});
+  const seams=alphaOf(x=>{x.save();x.clip(P);x.lineWidth=2.4;x.lineCap='round';
+    const L=(a)=>{x.beginPath();x.moveTo(a[0],a[1]);x.bezierCurveTo(a[2],a[3],a[4],a[5],a[6],a[7]);x.stroke()};
+    L([190,58,193,110,187,170,176,224]);L([510,58,507,110,513,170,524,224]);
+    L([162,590,250,605,450,605,538,590]);
+    L([60,182,80,206,102,226,128,246]);L([640,182,620,206,598,226,572,246]);
+    x.restore()});
+  const stitch=alphaOf(x=>{x.save();x.clip(P);x.lineWidth=1.3;x.setLineDash([4,3]);
+    const L=(a)=>{x.beginPath();x.moveTo(a[0],a[1]);x.bezierCurveTo(a[2],a[3],a[4],a[5],a[6],a[7]);x.stroke()};
+    L([162,598,250,613,450,613,538,598]);L([162,604,250,619,450,619,538,604]);
+    L([54,188,74,212,98,232,124,252]);L([646,188,626,212,602,232,576,252]);
+    if(front){x.setLineDash([3,3]);x.lineWidth=1.2;x.beginPath();x.moveTo(275,40);x.bezierCurveTo(288,108,412,108,425,40);x.stroke()}
+    x.restore()});
+  /* ---------- ruído ---------- */
+  let s=seed*9301+49297;const rnd=()=>{s=(s*16807)%2147483647;return s/2147483647};
+  const G=64,grid=new Float32Array(G*G);for(let i=0;i<G*G;i++)grid[i]=rnd();
+  const vn=(x,y)=>{const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf);
+    const a=grid[((yi&63)*G+(xi&63))],b=grid[((yi&63)*G+((xi+1)&63))],c=grid[(((yi+1)&63)*G+(xi&63))],d=grid[(((yi+1)&63)*G+((xi+1)&63))];
+    return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v};
+  const fbm=(x,y)=>vn(x,y)*.55+vn(x*2.03,y*2.03)*.28+vn(x*4.1,y*4.1)*.17;
+  /* ---------- blur separável ---------- */
+  function blur(src,r,passes=3){
+    let a=Float32Array.from(src),b=new Float32Array(N);
+    for(let p=0;p<passes;p++){
+      for(let y=0;y<H;y++){let acc=0,row=y*W;for(let x=-r;x<=r;x++)acc+=a[row+Math.min(W-1,Math.max(0,x))];
+        for(let x=0;x<W;x++){b[row+x]=acc/(2*r+1);acc+=a[row+Math.min(W-1,x+r+1)]-a[row+Math.max(0,x-r)]}}
+      for(let x=0;x<W;x++){let acc=0;for(let y=-r;y<=r;y++)acc+=b[Math.min(H-1,Math.max(0,y))*W+x];
+        for(let y=0;y<H;y++){a[y*W+x]=acc/(2*r+1);acc+=b[Math.min(H-1,y+r+1)*W+x]-b[Math.max(0,y-r)*W+x]}}
+    }
+    return a;
+  }
+  /* ---------- mapa de altura ---------- */
+  const inf=blur(mask,16);
+  const pmb=blur(pm,1,1);
+  // dobras: [x topo, y topo, x base, y base, curvatura, amplitude, largura]
+  const F=front?[
+    [300,95,232,220,10,-4.5,14],[402,95,470,220,-10,-4.5,14],
+    [230,236,222,600,-12,6,22],[470,236,480,600,10,6,22],
+    [262,250,282,600,8,-3.5,12],[438,250,420,600,-8,-3.5,12],
+    [330,150,318,600,6,4,26],[372,150,386,600,-6,3,20],
+    [196,300,190,600,4,-3,10],[506,300,512,600,-4,-3,10],
+    [180,120,95,215,-6,4,14],[520,120,606,215,6,4,14],
+    [150,150,110,232,-4,-3,9],[550,150,590,232,4,-3,9],
+    [290,470,250,610,-6,3,10],[410,480,456,610,6,3,10]
+  ]:[
+    [290,70,226,226,8,-4,14],[410,70,474,226,-8,-4,14],
+    [232,236,226,600,-10,6,22],[468,236,476,600,10,6,22],
+    [270,260,288,600,10,-3,12],[430,260,414,600,-10,-3,12],
+    [345,120,336,600,4,3.5,28],
+    [198,300,192,600,4,-3,10],[502,300,508,600,-4,-3,10],
+    [178,120,96,214,-6,4,14],[522,120,604,214,6,4,14],
+    [300,480,262,610,-6,3,10],[404,470,444,610,6,3,10]
+  ];
+  const h=new Float32Array(N);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const i=y*W+x;if(mask[i]<0.01&&inf[i]<0.01)continue;
+    let v=Math.sqrt(Math.max(0,inf[i]))*20;
+    for(const f of F){
+      const t=(y-f[1])/(f[3]-f[1]);if(t<-0.15||t>1.15)continue;
+      const tc=Math.max(0,Math.min(1,t));
+      const cx=f[0]+(f[2]-f[0])*tc+f[4]*Math.sin(Math.PI*tc);
+      const d=(x-cx)/f[6];
+      const fade=Math.min(1,Math.max(0,(t+0.15)/0.35))*Math.min(1,Math.max(0,(1.15-t)/0.35));
+      v+=f[5]*1.7*Math.exp(-d*d)*fade;
+    }
+    const n1=fbm(x/70,y/120),n2=fbm(x/22+7,y/34+3);
+    v+=(n1-0.5)*6+(n2-0.5)*2.2*(1-pmb[i]*0.8);
+    // gola canelada
+    if(collar[i]>0){const ang=Math.atan2(y+60,x-350);v+=collar[i]*(3+0.9*Math.sin(ang*210))}
+    v-=seams[i]*2.2;
+    v+=pmb[i]*0.7;
+    h[i]=v;
+  }
+  const hb=blur(h,7,2);
+  /* ---------- luz ---------- */
+  const out=cv(),ox=out.getContext('2d');
+  const img=ox.createImageData(W,H),d=img.data;
+  let Lx=-0.5,Ly=-0.62,Lz=0.55;const ll=Math.hypot(Lx,Ly,Lz);Lx/=ll;Ly/=ll;Lz/=ll;
+  const Hx=Lx,Hy=Ly,Hz=Lz+1,hl=Math.hypot(Hx,Hy,Hz);
+  for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){
+    const i=y*W+x,m=mask[i];if(m<=0.003)continue;
+    let nx=-(h[i+1]-h[i-1])*1.15,ny=-(h[i+W]-h[i-W])*1.15,nz=1;
+    // micro relevo da malha (jersey): colunas de pontos em V
+    const col=x/3.1,row=y/2.6+((Math.floor(col)&1)?0.5:0);
+    const kn=Math.sin((col%1)*Math.PI)*Math.sin((row%1)*Math.PI);
+    nx+=((col%1)-0.5)*0.22*(1-pmb[i]);ny+=((row%1)-0.5)*0.12*(1-pmb[i]);
+    const nl=Math.hypot(nx,ny,nz);nx/=nl;ny/=nl;nz/=nl;
+    const nd=nx*Lx+ny*Ly+nz*Lz;
+    const diff=Math.max(0,(nd+0.35)/1.35);
+    const ao=Math.max(0,Math.min(1,(hb[i]-h[i])*0.16));
+    const nh=Math.max(0,(nx*Hx+ny*Hy+nz*Hz)/hl);
+    // albedo
+    const p=pm[i];let ar=rgb[0],ag=rgb[1],ab=rgb[2];
+    if(collar[i]>0){const k=1-collar[i]*0.12;ar*=k;ag*=k;ab*=k}
+    if(p>0){const j=i*4;ar=ar*(1-p)+pd[j]/255*p;ag=ag*(1-p)+pd[j+1]/255*p;ab=ab*(1-p)+pd[j+2]/255*p}
+    const st=stitch[i]*0.55;ar=ar*(1-st)+ar*1.35*st;ag=ag*(1-st)+ag*1.35*st;ab=ab*(1-st)+ab*1.35*st;
+    const grain=0.95+0.1*grid[((y*7+x*13)&4095)]*0.6+0.04*kn;
+    let light=(0.34+0.86*diff)*(1-ao*0.75)*grain;
+    const sheen=Math.pow(1-nz,1.6)*0.22*(1-p);
+    const spec=p*0.5*Math.pow(nh,40)+(1-p)*0.05*Math.pow(nh,8);
+    let r=ar*light+sheen*0.55+spec,g=ag*light+sheen*0.6+spec,b=ab*light+sheen*0.75+spec;
+    // leve escurecimento nas bordas (tecido virando)
+    const e=Math.min(1,inf[i]*1.6);r*=0.55+0.45*e;g*=0.55+0.45*e;b*=0.55+0.45*e;
+    const j=i*4;d[j]=Math.min(255,Math.pow(Math.max(0,r),0.97)*255);d[j+1]=Math.min(255,Math.pow(Math.max(0,g),0.97)*255);d[j+2]=Math.min(255,Math.pow(Math.max(0,b),0.97)*255);d[j+3]=m*255;
+  }
+  ox.putImageData(img,0,0);
+  // interior da gola (avesso das costas visto pela abertura)
+  if(front){ox.save();ox.globalCompositeOperation='destination-over';
+    const dk=k=>`rgb(${rgb.map(v=>Math.round(v*255*k)).join(',')})`;
+    const g=ox.createLinearGradient(0,30,0,80);g.addColorStop(0,dk(.6));g.addColorStop(.35,dk(.42));g.addColorStop(1,dk(.3));
+    ox.fillStyle=g;ox.beginPath();ox.moveTo(268,34);ox.bezierCurveTo(285,50,415,50,432,34);ox.bezierCurveTo(420,92,280,92,268,34);ox.fill();
+    ox.globalCompositeOperation='source-over';ox.strokeStyle=dk(.42);ox.lineWidth=9;ox.beginPath();ox.moveTo(272,36);ox.bezierCurveTo(288,50,412,50,428,36);ox.stroke();
+    ox.strokeStyle='rgba(0,0,0,.35)';ox.lineWidth=1.5;ox.beginPath();ox.moveTo(274,41);ox.bezierCurveTo(290,55,410,55,426,41);ox.stroke();
+    ox.restore()}
+  return out.toDataURL('image/png');
+}
+
+const SHIRT_HEX={g:'#4A4E57',n:'#1F3058',p:'#26282D',b:'#E4E5E1'};
+const SHIRT_INK={b:'#1F3058'};
+const KEYS=['n','g','p','b'];
+const IMG={};
+const BLANK='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+KEYS.forEach(c=>{IMG['front_'+c]=BLANK;IMG['back_'+c]=BLANK});
+
+const CONFIG={whats:'5538997251419',preco:89.9};
+const CORES={n:{n:'Azul-noite',hex:'#1F3058'},g:{n:'Grafite',hex:'#4A4E57'},p:{n:'Preto',hex:'#26282D'},b:{n:'Branco',hex:'#E4E5E1'}};
+const SIZES=['PP','P','M','G','GG'];
+const brl=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const $=id=>document.getElementById(id);
+
+const N=16,GAP=66,X0=820,ANG=-62,RAILZ=-230;
+const world=$('world'),stage=$('stage'),room=$('room');
+let vw=innerWidth;
+const W=()=>X0+N*GAP+1150;
+const HANGER='<svg class="hg" viewBox="0 0 240 80" aria-hidden="true"><defs><linearGradient id="wire" x1="0" x2="1"><stop offset="0" stop-color="#6d7890"/><stop offset=".5" stop-color="#e6ecf5"/><stop offset="1" stop-color="#6d7890"/></linearGradient></defs><path d="M120 50 L119 32 Q116 25 113 19 A8.5 8.5 0 1 1 129.5 16 Q130 21 126 24" fill="none" stroke="#c8d1df" stroke-width="2.6" stroke-linecap="round"/><path d="M117 44 q3 4 6 0 q-3 -4 -6 0" fill="none" stroke="#e6ecf5" stroke-width="2"/></svg>';
+
+const shirts=[];
+function build(){
+  const L=-vw,WW=W()+2*vw,parts=[];
+  parts.push(`<div class="wall" style="left:${L}px;width:${WW}px"><div class="wainscot"></div></div>`);
+  parts.push(`<div class="rail" style="left:${X0-170}px;width:${N*GAP+290}px"></div>`);
+  parts.push(`<div class="bracket" style="left:${X0-150}px"></div><div class="bracket" style="left:${X0+N*GAP+100}px"></div>`);
+  parts.push(`<div class="neon" style="left:120px">VETOR<small>PROVADOR · LOJA EXEMPLO</small></div>`);
+  parts.push(`<div class="curtain" style="left:-140px"></div>`);
+  for(let i=0;i<4;i++)parts.push(`<div class="light" style="left:${X0+i*420-260}px"></div><div class="lamp" style="left:${X0+i*420}px"><i></i></div>`);
+  const mx=X0+N*GAP+260;
+  parts.push(`<div class="mirror" style="left:${mx}px"></div><div class="bench" style="left:${mx+300}px"></div>`);
+  parts.push(`<div class="plant" style="left:${mx+640}px"><div class="leaf" style="transform:rotate(-24deg)"></div><div class="leaf" style="transform:rotate(-6deg);height:200px"></div><div class="leaf" style="transform:rotate(18deg)"></div><div class="pot"></div></div>`);
+  world.innerHTML=parts.join('');
+  shirts.length=0;
+  for(let i=0;i<N;i++){
+    const c=KEYS[i%4];
+    const el=document.createElement('div');
+    el.className='sh';
+    el.innerHTML=HANGER+`<img class="face f" src="${IMG['front_'+c]}" alt="" draggable="false"><img class="face b" src="${IMG['back_'+c]}" alt="" draggable="false"><button class="hit" aria-label="Camiseta Vetor ${CORES[c].n}"></button>`;
+    world.appendChild(el);
+    const s={i,c,el,x:X0+i*GAP,rx:0,vx:0,rz:0,vz:0,pull:0,jit:(Math.sin(i*12.9)*3)};
+    el.querySelector('.hit').addEventListener('click',ev=>{if(movedMax>8)return;ev.stopPropagation();selectShirt(s)});
+    shirts.push(s);
+  }
+}
+build();
+
+/* câmera e física */
+let cam=0,target=0,camV=0;
+const maxCam=()=>Math.max(0,W()-vw);
+const clamp=v=>Math.max(0,Math.min(maxCam(),v));
+let pointer={x:-1e4,y:0,vx:0,inside:false},hov=null,sel=null,yawU=0,pitchU=0;
+function shirtTransform(s){
+  if(sel===s){
+    const small=innerWidth<700;
+    const sx=cam+(small?vw/2:vw*0.36);
+    const H=innerHeight;
+    const sc=small?Math.min(1.15,vw/330):Math.min(1.45,(0.75*H-78)/(300*1.05));
+    const sy=small?337-H*0.40:(78-H/2)/1.05+337;
+    return `translate3d(${sx-0}px,${sy}px,60px) rotateX(${pitchU}deg) rotateY(${yawU}deg) scale(${sc})`;
+  }
+  const pull=s.pull;
+  return `translate3d(${s.x}px,0,${RAILZ+pull*40}px) rotateX(${s.rx}deg) rotateZ(${s.rz}deg) rotateY(${ANG+s.jit+pull*18}deg)`;
+}
+function tick(){
+  const prev=cam;cam+=(target-cam)*.12;camV=cam-prev;
+  world.style.transform=`translate3d(${-cam}px,0,0)`;
+  $('ff').style.backgroundPosition=(-cam*.9)+'px 0,0 0';
+  const px=pointer.x+cam;
+  for(const s of shirts){
+    if(s===sel){continue}
+    // impulso: mão passando pelas roupas
+    const d=px-s.x;
+    if(pointer.inside&&Math.abs(d)<70&&pointer.y>innerHeight*0.12&&pointer.y<innerHeight*0.62){
+      const k=(1-Math.abs(d)/70);
+      s.vz+=pointer.vx*0.035*k; s.vx+=Math.abs(pointer.vx)*0.02*k;
+    }
+    // inércia ao mover a arara
+    s.vz+=camV*0.012;
+    s.vz+=-s.rz*0.06; s.vz*=0.93; s.rz+=s.vz;
+    s.vx+=-s.rx*0.05; s.vx*=0.92; s.rx+=s.vx;
+    s.rz=Math.max(-18,Math.min(18,s.rz)); s.rx=Math.max(-14,Math.min(14,s.rx));
+    const tp=(hov===s)?1:0; s.pull+=(tp-s.pull)*0.15;
+    s.el.style.transform=shirtTransform(s);
+  }
+  pointer.vx*=0.6;
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+addEventListener('resize',()=>{vw=innerWidth;build();target=clamp(target);if(sel){sel=null;psheet.classList.remove('open')}});
+
+stage.addEventListener('pointermove',e=>{
+  const rx=(e.clientY/innerHeight-.5)*-3,ry=(e.clientX/innerWidth-.5)*7;
+  if(!sel)room.style.transform=`rotateX(${rx}deg) rotateY(${ry}deg)`;
+});
+/* arrastar: move a arara, ou gira a camiseta selecionada */
+let dragging=false,sx=0,sy=0,st=0,movedMax=0,dragSel=false,y0=0,p0=0,lastX=0;
+stage.addEventListener('pointerdown',e=>{
+  dragging=true;sx=lastX=e.clientX;sy=e.clientY;st=target;movedMax=0;
+  dragSel=!!sel&&!!e.target.closest('.sh.sel');
+  y0=yawU;p0=pitchU;
+  if(dragSel)sel.el.classList.remove('anim');
+  stage.classList.add('drag');
+});
+addEventListener('pointermove',e=>{
+  pointer.vx=e.clientX-lastX;lastX=e.clientX;pointer.x=e.clientX;pointer.y=e.clientY;pointer.inside=true;
+  if(dragging){
+    const dx=e.clientX-sx,dy=e.clientY-sy;movedMax=Math.max(movedMax,Math.hypot(dx,dy));
+    if(dragSel){yawU=y0+dx*0.6;pitchU=Math.max(-25,Math.min(25,p0-dy*0.2));sel.el.style.transform=shirtTransform(sel)}
+    else if(!sel){target=clamp(st-dx*1.5)}
+    return;
+  }
+  if(!sel&&e.pointerType==='mouse'){
+    const h=e.target.closest&&e.target.closest('.sh');
+    const s=h?shirts.find(x=>x.el===h):null;
+    if(s!==hov){hov&&hov.el.classList.remove('hov');hov=s;hov&&hov.el.classList.add('hov')}
+  }
+});
+addEventListener('pointerup',()=>{dragging=false;stage.classList.remove('drag')});
+stage.addEventListener('pointerleave',()=>{pointer.inside=false;if(hov){hov.el.classList.remove('hov');hov=null}});
+stage.addEventListener('wheel',e=>{if(sel)return;e.preventDefault();target=clamp(target+(Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY)*1.1)},{passive:false});
+$('next').onclick=()=>{if(sel){yawU+=45;sel.el.classList.add('anim');sel.el.style.transform=shirtTransform(sel)}else target=clamp(target+GAP*5)};
+$('prev').onclick=()=>{if(sel){yawU-=45;sel.el.classList.add('anim');sel.el.style.transform=shirtTransform(sel)}else target=clamp(target-GAP*5)};
+addEventListener('keydown',e=>{
+  if(e.key==='Escape')closePanel();
+  if(e.key==='ArrowRight')$('next').click();
+  if(e.key==='ArrowLeft')$('prev').click();
+});
+
+/* selecionar e devolver */
+function selectShirt(s){
+  if(sel===s)return;
+  if(sel){const old=sel;returnShirt(()=>selectShirt(s));return}
+  hov&&hov.el.classList.remove('hov');hov=null;
+  sel=s;yawU=0;pitchU=0;
+  room.style.transform='none';
+  s.el.classList.add('anim','sel');
+  s.el.style.zIndex=5;
+  s.el.style.transform=shirtTransform(s);
+  setTimeout(openProduct,550);
+  $('hint').innerHTML='<b>Arraste</b> a camiseta para girar · costas com o V grande';
+}
+function returnShirt(after){
+  if(!sel)return;
+  const s=sel;psheet.classList.remove('open');
+  sel=null;s.el.classList.remove('sel');s.el.classList.add('anim');
+  s.rz=0;s.vz=-6;s.rx=0;s.vx=0;
+  s.el.style.transform=shirtTransform(s);
+  setTimeout(()=>{s.el.classList.remove('anim');s.el.style.zIndex='';after&&after()},850);
+  $('hint').innerHTML='<b>Clique</b> numa camiseta para ver em 3D';
+}
+
+/* painel */
+const psheet=$('psheet'),bsheet=$('bsheet'),pbody=$('pbody'),addbtn=$('addbtn');
+let tam=null;
+function openProduct(){if(!sel)return;tam=null;bsheet.classList.remove('open');renderProduct();psheet.classList.add('open')}
+function renderProduct(){
+  const c=CORES[sel.c];
+  pbody.innerHTML=`<div class="name">Camiseta Vetor</div><div class="price">${brl(CONFIG.preco)}</div>
+  <p class="desc">Camiseta básica com o V da Vetor no peito e o V grande com @vetordigital.lp nas costas.</p>
+  <div class="lbl">Cor</div><div class="cor"><i style="background:${c.hex}"></i>${c.n}</div>
+  <div class="lbl">Tamanho</div><div class="sz">${SIZES.map(s=>`<button aria-pressed="${s===tam}" data-tam="${s}">${s}</button>`).join('')}</div>
+  <p class="tip">Arraste a camiseta para girar e ver as costas.</p>`;
+  addbtn.disabled=!tam;addbtn.textContent=tam?'Adicionar à sacola':'Escolha o tamanho';
+}
+pbody.onclick=e=>{const t=e.target.closest('[data-tam]');if(t){tam=t.dataset.tam;renderProduct()}};
+function closePanel(){psheet.classList.remove('open');returnShirt()}
+$('pclose').onclick=closePanel;$('backbtn').onclick=closePanel;
+
+let bag=[];
+addbtn.onclick=()=>{if(!tam||!sel)return;const c=sel.c;const key=c+'-'+tam;const f=bag.find(x=>x.key===key);if(f)f.q++;else bag.push({key,c,tam,q:1});renderBag();toast('Adicionada à sacola');closePanel()};
+function renderBag(){
+  document.querySelectorAll('.bagn').forEach(e=>e.textContent=bag.reduce((a,b)=>a+b.q,0));
+  $('blines').innerHTML=bag.length?bag.map(b=>`<div class="line"><img src="${IMG['front_'+b.c]}" alt=""><div class="t"><b>Camiseta Vetor</b><span>${CORES[b.c].n} · ${b.tam} · ${b.q}x</span></div><div class="p">${brl(CONFIG.preco*b.q)}</div></div>`).join(''):'<div class="empty">Sua sacola está vazia.<br>Escolha uma camiseta na arara.</div>';
+  const tot=bag.reduce((a,b)=>a+CONFIG.preco*b.q,0);$('btotal').textContent=brl(tot);
+  const msg='[Demonstração] Pedido na Loja Exemplo Vetor:\n'+bag.map(b=>`${b.q}x Camiseta Vetor (${CORES[b.c].n}, ${b.tam}) ${brl(CONFIG.preco*b.q)}`).join('\n')+'\nTotal: '+brl(tot);
+  $('zap').href='https://wa.me/'+CONFIG.whats+'?text='+encodeURIComponent(bag.length?msg:'Olá! Vi a loja exemplo e quero uma para a minha marca.');
+}
+renderBag();
+$('bagbtn').onclick=()=>{if(sel)closePanel();bsheet.classList.add('open')};
+$('bclose').onclick=()=>bsheet.classList.remove('open');
+let tt;function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),1600)}
+function applyImgs(){shirts.forEach(s=>{s.el.querySelector('.f').src=IMG['front_'+s.c];s.el.querySelector('.b').src=IMG['back_'+s.c]});renderBag()}
+(async()=>{
+  try{if(document.fonts&&document.fonts.load)await Promise.race([document.fonts.load('600 33px Inter'),new Promise(r=>setTimeout(r,1500))])}catch(_){}
+  for(const side of ['front','back'])for(const c of KEYS){await new Promise(r=>setTimeout(r,16));IMG[side+'_'+c]=makeShirt(side,SHIRT_HEX[c],0,SHIRT_INK[c]);storeImgs()}
+  applyImgs();
+})();
+const startCam=()=>clamp(innerWidth<700?X0-90:X0-vw*0.3);
+target=cam=startCam();
+
+/* ---------- loja (página inicial) ---------- */
+const grid=$('grid');
+grid.innerHTML=KEYS.map(c=>`<article class="card" data-c="${c}">
+  <button class="ph" data-qv="${c}" aria-label="Ver Camiseta Vetor ${CORES[c].n}"><span class="sk"></span><img class="fr" alt="Camiseta Vetor ${CORES[c].n}, frente" hidden><img class="bk" alt="" hidden><span class="tag3d">3D</span></button>
+  <div class="cinfo"><b>Camiseta Vetor</b><span class="cc"><i style="background:${CORES[c].hex}"></i>${CORES[c].n}</span><span class="pr">${brl(CONFIG.preco)}</span><span class="inst">ou 3x de ${brl(CONFIG.preco/3)}</span></div>
+  <div class="cact"><button class="buy" data-qv="${c}">Comprar</button><button class="v3" data-3d="${c}">Ver em 3D</button></div>
+</article>`).join('');
+function storeImgs(){
+  grid.querySelectorAll('.card').forEach(card=>{const c=card.dataset.c,f=IMG['front_'+c],b=IMG['back_'+c];
+    const fi=card.querySelector('.fr'),bi=card.querySelector('.bk');
+    if(f!==BLANK&&fi.src!==f){fi.src=f;fi.hidden=false;card.querySelector('.sk').hidden=true}
+    if(b!==BLANK&&bi.src!==b){bi.src=b;bi.hidden=false}});
+  if(IMG.front_n!==BLANK)$('heroF').src=IMG.front_n;
+  if(IMG.back_g!==BLANK)$('heroB').src=IMG.back_g;else if(IMG.front_g!==BLANK)$('heroB').src=IMG.front_g;
+  if($('qv').classList.contains('open'))qvRender();
+}
+/* visualização rápida */
+let qc='n',qside='front',qtam=null;
+function openQV(c){qc=c;qside='front';qtam=null;qvRender();$('qv').classList.add('open');$('qv').setAttribute('aria-hidden','false')}
+function closeQV(){$('qv').classList.remove('open');$('qv').setAttribute('aria-hidden','true')}
+function qvRender(){
+  $('qvimg').src=IMG[qside+'_'+qc];$('qvimg').alt='Camiseta Vetor '+CORES[qc].n+(qside==='front'?', frente':', costas');
+  $('qvf').setAttribute('aria-pressed',qside==='front');$('qvb').setAttribute('aria-pressed',qside==='back');
+  $('qvname').textContent='Camiseta Vetor · '+CORES[qc].n;$('qvcor').textContent='Cor · '+CORES[qc].n;
+  $('qvsw').innerHTML=KEYS.map(c=>`<button style="background:${CORES[c].hex}" aria-label="${CORES[c].n}" aria-pressed="${c===qc}" data-c="${c}"></button>`).join('');
+  $('qvsz').innerHTML=SIZES.map(s=>`<button aria-pressed="${s===qtam}" data-tam="${s}">${s}</button>`).join('');
+  $('qvadd').disabled=!qtam;$('qvadd').textContent=qtam?'Adicionar à sacola':'Escolha o tamanho';
+}
+$('qvf').onclick=()=>{qside='front';qvRender()};$('qvb').onclick=()=>{qside='back';qvRender()};
+$('qvsw').onclick=e=>{const b=e.target.closest('[data-c]');if(b){qc=b.dataset.c;qvRender()}};
+$('qvsz').onclick=e=>{const b=e.target.closest('[data-tam]');if(b){qtam=b.dataset.tam;qvRender()}};
+$('qvclose').onclick=closeQV;$('qv').addEventListener('click',e=>{if(e.target.id==='qv')closeQV()});
+$('qvadd').onclick=()=>{if(!qtam)return;addToBag(qc,qtam);closeQV()};
+$('qv3d').onclick=()=>{closeQV();open3D(qc)};
+function addToBag(c,t){const key=c+'-'+t;const f=bag.find(x=>x.key===key);if(f)f.q++;else bag.push({key,c,tam:t,q:1});renderBag();toast('Adicionada à sacola')}
+/* navegação entre loja e provador */
+function open3D(c){
+  closeQV();bsheet.classList.remove('open');
+  document.body.classList.add('v3d');
+  if(location.hash!=='#provador')history.replaceState(null,'','#provador');
+  vw=innerWidth;target=cam=startCam();
+  if(c){const s=shirts.find(x=>x.c===c);if(s){target=clamp(s.x-vw*0.45);setTimeout(()=>selectShirt(s),650)}}
+}
+function closeStore3D(){
+  if(sel){psheet.classList.remove('open');const s=sel;sel=null;s.el.classList.remove('sel','anim');s.el.style.zIndex='';}
+  document.body.classList.remove('v3d');history.replaceState(null,'',location.pathname+location.search);
+}
+document.addEventListener('click',e=>{
+  const o=e.target.closest('[data-open3d]');if(o){e.preventDefault();open3D();return}
+  const d=e.target.closest('[data-3d]');if(d){open3D(d.dataset['3d']);return}
+  const q=e.target.closest('[data-qv]');if(q){openQV(q.dataset.qv);return}
+  const sc=e.target.closest('[data-scroll]');if(sc){e.preventDefault();$(sc.dataset.scroll).scrollIntoView({behavior:'smooth'});return}
+  const bg=e.target.closest('[data-bag]');if(bg){bsheet.classList.add('open')}
+});
+$('tostore').onclick=closeStore3D;
+const vx=$('vx'),vxv=$('vxv');
+function openVideo(auto){vx.classList.add('open');vx.setAttribute('aria-hidden','false');const p=vxv.play();if(p&&p.catch)p.catch(()=>{})}
+function closeVideo(){vx.classList.remove('open');vx.setAttribute('aria-hidden','true');vxv.pause()}
+$('vxclose').onclick=closeVideo;$('vxskip').onclick=closeVideo;vx.addEventListener('click',e=>{if(e.target===vx)closeVideo()});
+vxv.addEventListener('ended',closeVideo);
+document.addEventListener('click',e=>{if(e.target.closest('[data-video]')){e.preventDefault();openVideo()}});
+
+addEventListener('hashchange',()=>{if(location.hash==='#provador')open3D();else if(document.body.classList.contains('v3d'))closeStore3D()});
+addEventListener('keydown',e=>{if(e.key==='Escape'){closeQV();closeVideo()}});
+if(location.hash==='#provador')open3D();
+storeImgs();
+</script>
+</body></html>
